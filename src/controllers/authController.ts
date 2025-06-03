@@ -1,6 +1,6 @@
 import { NextFunction, Request,Response } from "express";
 import { loginSchema, signupSchema } from "../validators/authValidator";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient }  from "../generated/prisma"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 
@@ -38,8 +38,10 @@ export const login = async (req: Request, res: Response,next:NextFunction):Promi
     const user = await prisma.user.findUnique({ 
         where: { email: data.email } 
     });
-    if (!user) 
+    if (!user) {
          res.status(404).json({ message: "User not found" });
+         return;
+    }
 
     const match = await bcrypt.compare(data.password, user.password);
     if (!match)
