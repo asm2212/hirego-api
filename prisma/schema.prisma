@@ -22,7 +22,25 @@ model User {
   password  String
   role      Role     @default(CANDIDATE)
   createdAt DateTime @default(now())
+
+   jobs     Job[]   @relation("UserJobs")
 }
+
+model Job {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  jobType     String
+  location    String
+  salary      Int
+  deadline    DateTime
+  companyName String
+  managerId   String
+  createdAt   DateTime @default(now())
+
+  manager User @relation("UserJobs", fields: [managerId], references: [id])
+}
+
 
 enum Role {
   CANDIDATE
