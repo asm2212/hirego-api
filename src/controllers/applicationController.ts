@@ -1,8 +1,12 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "../generated/prisma";
+import fs from "fs";
 
 const prisma = new PrismaClient();
 
+/**
+ * Candidate applies to a job with a PDF resume
+ */
 export const applyToJob = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user || req.user.role !== "CANDIDATE") {
@@ -42,16 +46,44 @@ export const applyToJob = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const application = await prisma.application.create({
-      data: {
-        jobId,
-        candidateId: req.user.id,
-        resumePath: req.file.path,
-      },
-    });
+    try {
+      const application = await prisma.application.create({
+        data: {
+          jobId,
+          candidateId: req.user.id,
+          resumePath: req.file.path,
+        },
+      });
 
-    res.status(201).json({ message: "Application submitted successfully", application });
+      res.status(201).json({ message: "Application submitted successfully", application });
+    } catch (err: any) {
+      // Cleanup uploaded file if DB save fails
+      if (req.file) fs.unlinkSync(req.file.path);
+      throw err;
+    }
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: err.message || "Failed to apply to job" });
   }
+};
+
+/**
+ * Candidate views all jobs they applied to
+ */
+export const getMyApplications = async (req: Request, res: Response): Promise<void> => {
+  if (!req.user || req.user.role !== "CANDIDATE") {
+    res.status(403).json({ message: "Access denied" });
+    return;
+  }
+
+  const applications = await prisma.application.findMany({
+    where: { candidateId: req.user.id },
+    include: {
+      job: true, // Include job info for context
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  res.json({ applications });
 };
