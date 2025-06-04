@@ -5,26 +5,26 @@ import {
   getMyJobs,
   updateJob,
 } from "../controllers/jobController";
-import { authenticateUser } from "../middlewares/authenticateUser";
 import { authorizeRoles } from "../middlewares/authorizeRoles";
+import { authenticateUser } from "../middlewares/authenticateUser";
 
 const router = Router();
 
-router.get("/jobs", getAllJobs);
+router.get("/getalls", getAllJobs);
 router.post(
-  "/jobs",
+  "/create",
   authenticateUser,
   authorizeRoles("HIRING_MANAGER"),
   createJob
 );
 router.get(
-  "/manager/jobs",
+  "/manager/myjobs",
   authenticateUser,
   authorizeRoles("HIRING_MANAGER"),
   getMyJobs
 );
 router.patch(
-  "/jobs/:id",
+  "/updatejob/:id",
   authenticateUser,
   authorizeRoles("HIRING_MANAGER"),
   updateJob
