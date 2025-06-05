@@ -39,6 +39,7 @@ model Job {
 model Application {
   id          String   @id @default(uuid())
   resumePath  String
+  status      ApplicationStatus @default(PENDING)
   createdAt   DateTime @default(now())
   jobId       String
   candidateId String
@@ -53,4 +54,10 @@ enum Role {
   CANDIDATE
   HIRING_MANAGER
   ADMIN
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWED
+  REJECTED
 }

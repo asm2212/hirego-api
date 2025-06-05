@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "../generated/prisma";
+import { PrismaClient, ApplicationStatus } from "../generated/prisma";
 import fs from "fs";
+import path from "path";
 
 const prisma = new PrismaClient();
+const RESUME_DIR = path.join(__dirname, "../../uploads/resumes");
 
 /**
  * Candidate applies to a job with a PDF resume
@@ -15,8 +17,8 @@ export const applyToJob = async (req: Request, res: Response): Promise<void> => 
     }
 
     const jobId = req.params.id;
-
     const job = await prisma.job.findUnique({ where: { id: jobId } });
+
     if (!job) {
       res.status(404).json({ message: "Job not found" });
       return;
@@ -46,23 +48,24 @@ export const applyToJob = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
+    const resumePath = req.file.path;
+
     try {
       const application = await prisma.application.create({
         data: {
           jobId,
           candidateId: req.user.id,
-          resumePath: req.file.path,
+          resumePath,
         },
       });
 
       res.status(201).json({ message: "Application submitted successfully", application });
     } catch (err: any) {
-      // Cleanup uploaded file if DB save fails
-      if (req.file) fs.unlinkSync(req.file.path);
+      if (fs.existsSync(resumePath)) fs.unlinkSync(resumePath); // cleanup if DB insert fails
       throw err;
     }
   } catch (err: any) {
-    res.status(400).json({ error: err.message || "Failed to apply to job" });
+    res.status(500).json({ error: err.message || "Failed to apply to job" });
   }
 };
 
@@ -70,20 +73,98 @@ export const applyToJob = async (req: Request, res: Response): Promise<void> => 
  * Candidate views all jobs they applied to
  */
 export const getMyApplications = async (req: Request, res: Response): Promise<void> => {
-  if (!req.user || req.user.role !== "CANDIDATE") {
-    res.status(403).json({ message: "Access denied" });
-    return;
+  try {
+    if (!req.user || req.user.role !== "CANDIDATE") {
+      res.status(403).json({ message: "Access denied" });
+      return;
+    }
+
+    const applications = await prisma.application.findMany({
+      where: { candidateId: req.user.id },
+      include: {
+        job: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.json({ applications });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
+};
 
-  const applications = await prisma.application.findMany({
-    where: { candidateId: req.user.id },
-    include: {
-      job: true, // Include job info for context
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+/**
+ * Candidate deletes an application and its resume
+ */
+export const deleteApplication = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id;
 
-  res.json({ applications });
+    const app = await prisma.application.findUnique({ where: { id } });
+    if (!app || app.candidateId !== req.user?.id) {
+      res.status(404).json({ message: "Application not found or unauthorized" });
+      return;
+    }
+
+    if (fs.existsSync(app.resumePath)) {
+      fs.unlinkSync(app.resumePath);
+    }
+
+    await prisma.application.delete({ where: { id } });
+    res.json({ message: "Application deleted successfully" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * Admin or Hiring Manager updates application status
+ */
+export const updateApplicationStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["PENDING", "REVIEWED", "REJECTED"].includes(status)) {
+      res.status(400).json({ message: "Invalid status" });
+      return;
+    }
+
+    const updated = await prisma.application.update({
+      where: { id },
+      data: { status: status as ApplicationStatus },
+    });
+
+    res.json({ message: "Status updated", application: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * Candidate downloads their resume for an application
+ */
+export const downloadResume = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const app = await prisma.application.findUnique({ where: { id } });
+
+    if (!app || app.candidateId !== req.user?.id) {
+      res.status(404).json({ message: "Application not found or unauthorized" });
+      return;
+    }
+
+    const filePath = path.resolve(app.resumePath);
+    if (!fs.existsSync(filePath)) {
+      res.status(404).json({ message: "Resume file not found" });
+      return;
+    }
+
+    res.download(filePath);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 };
