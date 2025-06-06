@@ -14,11 +14,33 @@ const router = Router();
  * @swagger
  * job/getalls:
  *   get:
- *     summary: Get all job listings (public)
+ *     summary: Get all jobs with optional filtering, sorting, and pagination
  *     tags: [Candidate]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string, enum: [createdAt, salary, deadline] }
+ *       - in: query
+ *         name: order
+ *         schema: { type: string, enum: [asc, desc] }
+ *       - in: query
+ *         name: jobType
+ *         schema: { type: string }
+ *       - in: query
+ *         name: location
+ *         schema: { type: string }
+ *       - in: query
+ *         name: companyName
+ *         schema: { type: string }
  *     responses:
  *       200:
- *         description: List of public jobs
+ *         description: Paginated list of jobs
  */
 router.get("/getalls", getAllJobs);
 

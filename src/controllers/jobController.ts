@@ -25,12 +25,47 @@ export const createJob = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const getAllJobs = async (_: Request, res: Response): Promise<void> => {
+
+export const getAllJobs = async (req: Request, res: Response) => {
+  const {
+    page = "1",
+    limit = "10",
+    sortBy = "createdAt",
+    order = "desc",
+    jobType,
+    location,
+    companyName,
+  } = req.query;
+
+  const pageNumber = parseInt(page as string, 10);
+  const pageSize = parseInt(limit as string, 10);
+  const skip = (pageNumber - 1) * pageSize;
+
+  const filters: any = {};
+
+  if (jobType) filters.jobType = jobType;
+  if (location) filters.location = location;
+  if (companyName) filters.companyName = companyName;
+
   const jobs = await prisma.job.findMany({
-    orderBy: { createdAt: "desc" },
+    where: filters,
+    skip,
+    take: pageSize,
+    orderBy: {
+      [sortBy as string]: order === "asc" ? "asc" : "desc",
+    },
   });
-  res.json(jobs);
+
+  const total = await prisma.job.count({ where: filters });
+
+  res.json({
+    total,
+    page: pageNumber,
+    limit: pageSize,
+    jobs,
+  });
 };
+
 
 export const getMyJobs = async (req: Request, res: Response): Promise<void> => {
   if (!req.user) {
