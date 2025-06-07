@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createJob,
+  deleteJob,
   getAllJobs,
   getMyJobs,
   updateJob,
@@ -150,5 +151,13 @@ router.patch(
   authorizeRoles("HIRING_MANAGER"),
   updateJob
 );
+
+router.delete(
+  "/deletejob/:id",
+  authenticateUser,
+  authorizeRoles("HIRING_MANAGER"),
+  deleteJob
+);
+
 
 export default router;

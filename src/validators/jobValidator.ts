@@ -10,4 +10,5 @@ export const jobSchema = z.object({
     message: "Invalid deadline date format",
   }),
   companyName: z.string(),
+  status: z.enum(["OPEN", "CLOSED"]).optional(),
 });

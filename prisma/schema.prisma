@@ -18,29 +18,32 @@ model User {
 
   jobs         Job[]         @relation("UserJobs")
   applications Application[]
+  favorites    Favorite[]
 }
 
 model Job {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   title       String
   description String
   jobType     String
   location    String
   salary      Int
+  status      JobStatus @default(OPEN)
   deadline    DateTime
   companyName String
   managerId   String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   manager      User          @relation("UserJobs", fields: [managerId], references: [id])
   applications Application[]
+  favorites    Favorite[]
 }
 
 model Application {
-  id          String   @id @default(uuid())
+  id          String            @id @default(uuid())
   resumePath  String
   status      ApplicationStatus @default(PENDING)
-  createdAt   DateTime @default(now())
+  createdAt   DateTime          @default(now())
   jobId       String
   candidateId String
 
@@ -48,6 +51,17 @@ model Application {
   candidate User @relation(fields: [candidateId], references: [id])
 
   @@unique([jobId, candidateId]) // prevent duplicate application
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  jobId     String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  job       Job      @relation(fields: [jobId], references: [id])
+
+  @@unique([userId, jobId])
 }
 
 enum Role {
@@ -60,4 +74,9 @@ enum ApplicationStatus {
   PENDING
   REVIEWED
   REJECTED
+}
+
+enum JobStatus {
+  OPEN
+  CLOSED
 }

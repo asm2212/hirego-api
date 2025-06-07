@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
 import { jobSchema } from "../validators/jobValidator";
 import { PrismaClient } from "../generated/prisma";
+
 const prisma = new PrismaClient();
 
+// ✅ Create a new job (Hiring Manager)
 export const createJob = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
@@ -11,11 +13,13 @@ export const createJob = async (req: Request, res: Response): Promise<void> => {
     }
 
     const data = jobSchema.parse(req.body);
+
     const job = await prisma.job.create({
       data: {
         ...data,
         deadline: new Date(data.deadline),
         managerId: req.user.id,
+        status: data.status || "OPEN", // default OPEN
       },
     });
 
@@ -25,7 +29,7 @@ export const createJob = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-
+// ✅ Public: Get all jobs with filters, sorting, pagination
 export const getAllJobs = async (req: Request, res: Response) => {
   const {
     page = "1",
@@ -41,7 +45,12 @@ export const getAllJobs = async (req: Request, res: Response) => {
   const pageSize = parseInt(limit as string, 10);
   const skip = (pageNumber - 1) * pageSize;
 
-  const filters: any = {};
+  const filters: any = {
+    deadline: {
+      gte: new Date(), // Only future jobs
+    },
+    status: "OPEN",
+  };
 
   if (jobType) filters.jobType = jobType;
   if (location) filters.location = location;
@@ -66,7 +75,7 @@ export const getAllJobs = async (req: Request, res: Response) => {
   });
 };
 
-
+// ✅ Get all jobs created by logged-in Hiring Manager
 export const getMyJobs = async (req: Request, res: Response): Promise<void> => {
   if (!req.user) {
     res.status(401).json({ message: "Unauthorized" });
@@ -80,6 +89,7 @@ export const getMyJobs = async (req: Request, res: Response): Promise<void> => {
   res.json(jobs);
 };
 
+// ✅ Update job (only by owner)
 export const updateJob = async (req: Request, res: Response): Promise<void> => {
   if (!req.user) {
     res.status(401).json({ message: "Unauthorized" });
@@ -101,8 +111,33 @@ export const updateJob = async (req: Request, res: Response): Promise<void> => {
 
   const updated = await prisma.job.update({
     where: { id: jobId },
-    data: req.body, // ⚠️ Consider validating this with Zod or restricting updatable fields
+    data: req.body, // ✅ status allowed (OPEN/CLOSED)
   });
 
   res.json(updated);
+};
+
+// ✅ Delete job (only by owner)
+export const deleteJob = async (req: Request, res: Response): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  const jobId = req.params.id;
+  const job = await prisma.job.findUnique({ where: { id: jobId } });
+
+  if (!job) {
+    res.status(404).json({ message: "Job not found" });
+    return;
+  }
+
+  if (job.managerId !== req.user.id) {
+    res.status(403).json({ message: "You are not the owner of this job" });
+    return;
+  }
+
+  await prisma.job.delete({ where: { id: jobId } });
+
+  res.json({ message: "Job deleted successfully" });
 };
