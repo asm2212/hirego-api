@@ -9,6 +9,7 @@ import swaggerUi from "swagger-ui-express";
 import { authenticateUser } from "./middlewares/authenticateUser";
 import { authorizeAdmin } from "./middlewares/authorizeAdmin";
 import favoriteRoutes from "./routes/favoriteRoutes";
+import healthzRouter from './routes/healthz'
 
 const app = express();
 app.use(cors());
@@ -22,5 +23,7 @@ app.use("/admin", authenticateUser, authorizeAdmin, adminRoutes);
 // ✅ Do NOT apply `authorizeAdmin` globally
 app.use(favoriteRoutes); // Candidate-protected internally
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use(healthzRouter);
+
 
 export default app;
