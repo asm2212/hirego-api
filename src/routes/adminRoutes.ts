@@ -4,6 +4,8 @@ import {
   updateUserRole,
   getAllJobs,
   getAllApplications,
+  toggleBlockUser,
+  softDeleteUser,
 } from "../controllers/adminController";
 import { authenticateUser } from "../middlewares/authenticateUser";
 import { authorizeAdmin } from "../middlewares/authorizeAdmin";
@@ -12,77 +14,65 @@ const router = Router();
 
 router.use(authenticateUser, authorizeAdmin);
 
-/**
- * @swagger
- * /admin/users:
- *   get:
- *     summary: Get all users
- *     tags: [Admin]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of users
- */
+// ✅ Get all users
 router.get("/admin/users", getAllUsers);
 
+// ✅ Update user role
+router.patch("/admin/users/:id/role", updateUserRole);
+
+// ✅ Block or unblock user
 /**
  * @swagger
- * /admin/users/{id}/role:
+ * /admin/users/{id}/block:
  *   patch:
- *     summary: Update a user's role
+ *     summary: Toggle block or unblock a user
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
- *         required: true
  *         schema:
  *           type: string
+ *         required: true
  *         description: User ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               role:
- *                 type: string
- *                 enum: [CANDIDATE, HIRING_MANAGER, ADMIN]
  *     responses:
  *       200:
- *         description: User role updated
+ *         description: Block status toggled
+ *       404:
+ *         description: User not found
  */
-router.patch("/admin/users/:id/role", updateUserRole);
 
+router.patch("/admin/users/:id/block", toggleBlockUser);
+
+// ✅ Soft delete user
 /**
  * @swagger
- * /admin/jobs:
- *   get:
- *     summary: Get all jobs (admin only)
+ * /admin/users/{id}:
+ *   delete:
+ *     summary: Soft delete a user (admin only)
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: User ID
  *     responses:
  *       200:
- *         description: List of jobs
+ *         description: User soft deleted
+ *       404:
+ *         description: User not found
  */
+router.delete("/admin/users/:id", softDeleteUser);
+
+// ✅ Get all jobs
 router.get("/admin/jobs", getAllJobs);
 
-/**
- * @swagger
- * /admin/applications:
- *   get:
- *     summary: Get all applications (admin only)
- *     tags: [Admin]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of applications
- */
+// ✅ Get all applications
 router.get("/admin/applications", getAllApplications);
 
 export default router;

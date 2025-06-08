@@ -19,6 +19,8 @@ model User {
   jobs         Job[]         @relation("UserJobs")
   applications Application[]
   favorites    Favorite[]
+  isBlocked Boolean @default(false)
+  isDeleted Boolean @default(false)
 }
 
 model Job {
@@ -37,6 +39,7 @@ model Job {
   manager      User          @relation("UserJobs", fields: [managerId], references: [id])
   applications Application[]
   favorites    Favorite[]
+   isDeleted Boolean @default(false)
 }
 
 model Application {
@@ -51,6 +54,7 @@ model Application {
   candidate User @relation(fields: [candidateId], references: [id])
 
   @@unique([jobId, candidateId]) // prevent duplicate application
+   isDeleted Boolean @default(false)
 }
 
 model Favorite {
