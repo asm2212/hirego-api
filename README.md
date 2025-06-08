@@ -41,7 +41,6 @@
 - 📜 Swagger API documentation
 
 ---
-
 ## 📂 Project Structure
 
 ```
@@ -50,7 +49,10 @@ src/
 ├── routes/              # Express routes
 ├── services/            # Service layer
 ├── middlewares/         # Auth, error handling, etc.
-├── validators/          # Zod schemas
+├── validators/          # Zod schemas and request validation
+├── utils/               # Helper functions and utilities
+├── types/               # TypeScript type definitions and interfaces
+├── docs/                # Swagger/OpenAPI documentation and specs
 ├── lib/                 # Prisma client
 ├── app.ts               # Express config
 └── server.ts            # Entrypoint
