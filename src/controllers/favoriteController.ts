@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "../generated/prisma";
+import { logger } from "../utils/logger";
 
 const prisma = new PrismaClient();
 
@@ -7,6 +8,7 @@ const prisma = new PrismaClient();
 export const favoriteJob = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
+      logger.warn("Unauthorized favoriteJob attempt");
       res.status(401).json({ message: "Unauthorized" });
       return;
     }
@@ -23,6 +25,7 @@ export const favoriteJob = async (req: Request, res: Response): Promise<void> =>
     });
 
     if (exists) {
+      logger.info(`User ${req.user.id} tried to favorite job ${jobId} which is already favorited`);
       res.status(400).json({ message: "Job already favorited" });
       return;
     }
@@ -34,8 +37,10 @@ export const favoriteJob = async (req: Request, res: Response): Promise<void> =>
       },
     });
 
+    logger.info(`User ${req.user.id} favorited job ${jobId}`);
     res.status(201).json(favorite);
   } catch (err: any) {
+    logger.error(`favoriteJob failed for user ${req.user?.id ?? "unknown"}: ${err.message}`);
     res.status(500).json({ error: err.message });
   }
 };
@@ -44,6 +49,7 @@ export const favoriteJob = async (req: Request, res: Response): Promise<void> =>
 export const unfavoriteJob = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
+      logger.warn("Unauthorized unfavoriteJob attempt");
       res.status(401).json({ message: "Unauthorized" });
       return;
     }
@@ -59,8 +65,10 @@ export const unfavoriteJob = async (req: Request, res: Response): Promise<void> 
       },
     });
 
+    logger.info(`User ${req.user.id} unfavorited job ${jobId}`);
     res.json({ message: "Job unfavorited successfully" });
   } catch (err: any) {
+    logger.error(`unfavoriteJob failed for user ${req.user?.id ?? "unknown"}: ${err.message}`);
     res.status(500).json({ error: err.message });
   }
 };
@@ -69,6 +77,7 @@ export const unfavoriteJob = async (req: Request, res: Response): Promise<void> 
 export const getFavorites = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
+      logger.warn("Unauthorized getFavorites attempt");
       res.status(401).json({ message: "Unauthorized" });
       return;
     }
@@ -78,8 +87,10 @@ export const getFavorites = async (req: Request, res: Response): Promise<void> =
       include: { job: true },
     });
 
+    logger.info(`User ${req.user.id} fetched their favorite jobs (count: ${favorites.length})`);
     res.json({ favorites });
   } catch (err: any) {
+    logger.error(`getFavorites failed for user ${req.user?.id ?? "unknown"}: ${err.message}`);
     res.status(500).json({ error: err.message });
   }
 };

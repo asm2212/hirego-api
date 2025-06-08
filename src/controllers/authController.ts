@@ -3,6 +3,7 @@ import { loginSchema, signupSchema } from "../validators/authValidator";
 import { PrismaClient } from "../generated/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { logger } from "../utils/logger"; // ✅ import logger
 
 const prisma = new PrismaClient();
 
@@ -12,35 +13,34 @@ function signToken(payload: object, expiresIn = "1h") {
   return jwt.sign(payload, secret, { expiresIn } as jwt.SignOptions);
 }
 
+// ✅ Signup Controller
 export const signup = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const data = signupSchema.parse(req.body);
 
-    // Check if user exists
     const existing = await prisma.user.findUnique({
       where: { email: data.email }
     });
 
     if (existing) {
+      logger.warn(`Signup failed: email ${data.email} already exists`);
       res.status(409).json({ message: "Email already exists" });
       return;
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    // Only use fields that exist in the schema
     const user = await prisma.user.create({
       data: {
         email: data.email,
         password: hashedPassword,
         name: data.name,
-        // role will default to CANDIDATE
       }
     });
 
-    // Generate token
     const token = signToken({ id: user.id, role: user.role });
+
+    logger.info(`User signed up: ${user.email} (${user.role})`);
 
     res.status(201).json({
       token,
@@ -53,38 +53,41 @@ export const signup = async (req: Request, res: Response, next: NextFunction): P
     });
 
   } catch (error: any) {
-    // Handle validation errors from Zod
     if (error.errors) {
+      logger.warn(`Signup validation error: ${JSON.stringify(error.errors)}`);
       res.status(400).json({ errors: error.errors });
     } else {
-      next(error); // Pass to error handler
+      logger.error(`Signup server error: ${error.message}`);
+      next(error);
     }
   }
 };
 
+// ✅ Login Controller
 export const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const data = loginSchema.parse(req.body);
 
-    // Find user
     const user = await prisma.user.findUnique({
       where: { email: data.email }
     });
 
     if (!user) {
+      logger.warn(`Login failed: user ${data.email} not found`);
       res.status(404).json({ message: "User not found" });
       return;
     }
 
-    // Check password
     const match = await bcrypt.compare(data.password, user.password);
     if (!match) {
+      logger.warn(`Login failed: incorrect password for ${data.email}`);
       res.status(401).json({ message: "Incorrect password" });
       return;
     }
 
-    // Generate token & refresh token
     const token = signToken({ id: user.id, role: user.role });
+
+    logger.info(`User logged in: ${user.email} (${user.role})`);
 
     res.json({
       token,
@@ -96,10 +99,11 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       }
     });
   } catch (err: any) {
-    // Handle validation errors from Zod
     if (err.errors) {
+      logger.warn(`Login validation error: ${JSON.stringify(err.errors)}`);
       res.status(400).json({ errors: err.errors });
     } else {
+      logger.error(`Login server error: ${err.message}`);
       next(err);
     }
   }
